@@ -1,4 +1,12 @@
- 
+from describe import describe
+
+class SortingHat:
+    def __init__(self):
+        pass
+    
+    def LogisticRegression(self, Arithmancy, Astronomy, Herbology, DefenseAgainsttheDarkArts, Divination, MuggleStudies, AncientRunes, HistoryofMagic, Transfiguration,
+                           Potions, CareofMagicalCreatures, Charms, Flying):
+        return 
 
 if __name__ == "__main__":
     import sys, os
@@ -10,6 +18,6 @@ if __name__ == "__main__":
             raise Exception(f"The file '{sys.argv[1]}' must be a csv file.")
         if not os.path.exists(sys.argv[1]):
             raise Exception(f"The file '{sys.argv[1]}' does not exist.")
-        
+
     except Exception as e:
         print(e)

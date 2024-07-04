@@ -35,11 +35,11 @@ class describe:
             data["Max"] = values[-1]
             columnsData[column_name] = data
         self._Dataframe = pd.DataFrame(columnsData)
-        print(self._Dataframe)
 
 def Display_Data(dataset_train_csvpath):
     db = describe()
     db.calculate_data(dataset_train_csvpath)
+    print(db._Dataframe)
 
 if __name__ == "__main__":
     import sys, os
