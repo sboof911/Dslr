@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 
 class describe:
-    _Dataframe : pd.DataFrame
+    _SummaryDF : pd.DataFrame
     def __init__(self):
-        self._Dataframe = pd.DataFrame()
+        self._SummaryDF = pd.DataFrame()
 
     def calculate_percentile(self, array, percentile):
         index = (len(array) - 1) * percentile / 100
@@ -17,6 +17,7 @@ class describe:
 
     def calculate_data(self, dataset_train_csvpath : str):
         df = pd.read_csv(dataset_train_csvpath, sep=",")
+        self._DataFrame = df
         df = df.select_dtypes(include='number')
         df.drop('Index', axis=1, inplace=True) # axis = 1 for columns and axis = 0 for rows
         df.dropna(axis=1, inplace=True, how='all')
@@ -34,12 +35,12 @@ class describe:
             data["75%"] = self.calculate_percentile(values, 75)
             data["Max"] = values[-1]
             columnsData[column_name] = data
-        self._Dataframe = pd.DataFrame(columnsData)
+        self._SummaryDF = pd.DataFrame(columnsData)
 
 def Display_Data(dataset_train_csvpath):
     db = describe()
     db.calculate_data(dataset_train_csvpath)
-    print(db._Dataframe)
+    print(db._SummaryDF)
 
 if __name__ == "__main__":
     import sys, os
@@ -53,4 +54,4 @@ if __name__ == "__main__":
             raise Exception(f"The file '{sys.argv[1]}' does not exist.")
         Display_Data(sys.argv[1])
     except Exception as e:
-        print(e)
+        print(f"Exeption Error: {e}")
