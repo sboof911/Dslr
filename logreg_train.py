@@ -22,10 +22,31 @@ class SortingHat(describe):
 
     def initialize_parameters(self, featuresNum, HousesNum):
         self._Weight  = np.random.randn(featuresNum, HousesNum)
-        self._Bias = np.zeros((1, HousesNum))
+        self._Bias = np.zeros((1, HousesNum), dtype=int)
 
     def SigmoidFunction(self, y):
         return 1 / (1 + np.exp(-y))
+    
+    def forward_propagation(self, features : np.ndarray):
+        print(self._Weight)
+        print(features.shape[1], self._Weight.shape[0])
+        z = np.dot(features, self._Weight) + self._Bias
+        y_pred = self.SigmoidFunction(z)
+        return y_pred
+
+    # Compute Cost Function
+    def compute_cost(self, y_true, y_pred):
+        m = y_true.shape[0]
+        cost = -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+        return cost
+
+    # Backward Propagation
+    def backward_propagation(self, features : np.ndarray, y_true, y_pred):
+        m = y_true.shape[0]
+        dz = y_pred - y_true
+        dW = np.dot(features.T, dz) / m
+        db = np.sum(dz, axis=0, keepdims=True) / m
+        return dW, db
 
     def optimize(self, features_values : np.ndarray, TruetargetsValues : list, learning_rate : float, num_iterations : int, batch_size : float=0.3):
         featuresSize = features_values.shape[0]
@@ -34,6 +55,11 @@ class SortingHat(describe):
             idx = np.random.permutation(featuresSize)
             feature_shuffled = features_values[idx]
             Truetarget_shuffled = TruetargetsValues[idx]
+            feature_batch = feature_shuffled[:num_batches]
+            Truetarget_batch = Truetarget_shuffled[:num_batches]
+            y_pred = self.forward_propagation(feature_batch)
+            break
+            
 
     def trainModel(self):
         learning_rates = [1, 0.1, 0.01, 0.001, 0.0001, 0.00001]
@@ -47,6 +73,7 @@ class SortingHat(describe):
 
         for learning_rate in learning_rates:
             self.optimize(features_values, target_values, learning_rate, num_iterations, batch_size)
+            break
 
 if __name__ == "__main__":
     import sys, os
