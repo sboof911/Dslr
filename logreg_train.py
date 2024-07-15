@@ -7,11 +7,11 @@ class SortingHat(describe):
         self.calculate_data(dataset_train_csvpath)
         self.trainModel()
 
-    def normalizeData(self):
+    def normalizeData(self, HouseToInt):
         mean = self._SummaryDF.loc["Mean"]
         std  = self._SummaryDF.loc["Std"]
         self._NormalizedDF = self._DataFrame.copy()
-        HouseToInt = {'Ravenclaw': 0, 'Slytherin': 1, 'Gryffindor': 2, 'Hufflepuff': 3}
+
         self._NormalizedDF["Hogwarts House"] = self._NormalizedDF["Hogwarts House"].map(HouseToInt)
         for col in self._DataFrame.columns:
             if col in mean.index:
@@ -20,37 +20,28 @@ class SortingHat(describe):
             elif col != "Hogwarts House":
                 self._NormalizedDF.drop(col, axis=1, inplace=True)
         self.initialize_parameters(mean.index.shape[0], len(HouseToInt))
-        return self._NormalizedDF[self._NormalizedDF.columns.drop("Hogwarts House")].values, pd.get_dummies(self._NormalizedDF["Hogwarts House"]).values
+        return self._NormalizedDF[self._NormalizedDF.columns.drop("Hogwarts House")].values, self._NormalizedDF["Hogwarts House"].values
 
     def initialize_parameters(self, featuresNum, HousesNum):
         self._Weight  = np.random.randn(featuresNum, HousesNum)
-        self._Bias = np.zeros((1, HousesNum), dtype=float)
 
     def SigmoidFunction(self, y):
         return 1 / (1 + np.exp(-y))
 
-    def forward_propagation(self, features : np.ndarray):
-        z = np.dot(features, self._Weight) + self._Bias
-        y_pred = self.SigmoidFunction(z)
-        return y_pred
-
-    # Compute Cost Function
-    def compute_cost(self, y_true, y_pred):
-        m = y_true.shape[0]
+    def compute_cost(self, features_values, y_true):
+        y_pred = self.SigmoidFunction(np.dot(features_values, self._Weight))
         y_pred = np.clip(y_pred, 1e-15, 1 - 1e-15)
-        cost = -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)) * (1/m)
+        cost = -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
         return cost
 
-    # Backward Propagation
-    def backward_propagation(self, features : np.ndarray, y_true, y_pred):
-        m = y_true.shape[0]
-        dz = y_pred - y_true
-        dW = np.dot(features.T, dz) / m
-        db = np.sum(dz, axis=0, keepdims=True) / m
-        return dW, db
+    def gradient_descent(self, features_values, y_true, learning_rate):
+        m = features_values.shape[0]
+        y_pred = self.SigmoidFunction(np.dot(features_values, self._Weight))
+        gradient = np.dot(features_values.T, (y_pred - y_true)) / m
+        self._Weight -= learning_rate * gradient
 
     def predict(self, features_values):
-        y_pred = self.forward_propagation(features_values)
+        y_pred = self.SigmoidFunction(np.dot(features_values, self._Weight))
         return np.argmax(y_pred, axis=1)
 
     def evaluate_accuracy(self, y_true, y_pred):
@@ -65,12 +56,10 @@ class SortingHat(describe):
             Truetarget_shuffled = TruetargetsValues[idx]
             feature_batch = feature_shuffled[:num_batches]
             Truetarget_batch = Truetarget_shuffled[:num_batches]
-            y_pred = self.forward_propagation(feature_batch)
-            cost = self.compute_cost(Truetarget_batch, y_pred)
+            self.gradient_descent(feature_batch, Truetarget_batch, learning_rate)
+            cost = self.compute_cost(feature_batch, Truetarget_batch)
             self._costs.append(cost)
-            dW, db = self.backward_propagation(feature_batch, Truetarget_batch, y_pred)
-            self._Weight -= learning_rate * dW
-            self._Bias -= learning_rate * db
+
             if i % 100 == 0:
                 y_pred_remaining = self.predict(features_values[num_batches:])
                 accuracy = self.evaluate_accuracy(np.argmax(TruetargetsValues[num_batches:], axis=1), y_pred_remaining)
@@ -81,12 +70,18 @@ class SortingHat(describe):
         num_iterations = 1000
         batch_size = 0.3  # 30% of data as batch
         self._costs = []
-        features_values, target_values = self.normalizeData()
+        HouseToInt = {'Ravenclaw': 0, 'Slytherin': 1, 'Gryffindor': 2, 'Hufflepuff': 3}
+        features_values, classes_values = self.normalizeData(HouseToInt)
+        weights = {}
+        for house, cls in HouseToInt.items():
+            y_one_vs_all = np.zeros((classes_values.shape[0], len(HouseToInt)), dtype=int)
+            for key, value in enumerate(classes_values):
+                y_one_vs_all[key][value] = 1
+            self.optimize(features_values, y_one_vs_all, learning_rate, num_iterations, batch_size)
+            weights[house] = self._Weight.tolist()
 
-        self.optimize(features_values, target_values, learning_rate, num_iterations, batch_size)
         data = {
-            "wights":self._Weight.tolist(),
-            "bias":self._Bias.tolist(),
+            "weights":weights,
             "means":self._SummaryDF.loc["Mean"].to_dict(),
             "stds":self._SummaryDF.loc["Std"].to_dict()
         }
