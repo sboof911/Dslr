@@ -5,6 +5,7 @@ class describe:
     _SummaryDF : pd.DataFrame
     def __init__(self):
         self._SummaryDF = pd.DataFrame()
+        self._DataFrame = None
 
     def calculate_percentile(self, array, percentile):
         index = (len(array) - 1) * percentile / 100
@@ -19,7 +20,7 @@ class describe:
         df = pd.read_csv(dataset_train_csvpath, sep=",")
         self._DataFrame = df
         df = df.select_dtypes(include='number')
-        df.drop('Index', axis=1, inplace=True) # axis = 1 for columns and axis = 0 for rows
+        df.drop('Index', axis=1, inplace=True)
         df.dropna(axis=1, inplace=True, how='all')
         columnsData = {}
         for column_name, column_data in df.items():

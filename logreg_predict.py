@@ -17,14 +17,14 @@ def get_predictions(df: pd.DataFrame, predictData: dict):
     normalized_df = normalizedata(df, predictData["means"], predictData["stds"])
     features_values = normalized_df.values
     weights = predictData["weights"]
-    predictions = {}
+    predictions = []
 
-    for house, weight in weights.items():
+    for _, weight in weights.items():
         weight_matrix = np.array(weight)
         y_pred = 1 / (1 + np.exp(-np.dot(features_values, weight_matrix)))
-        predictions[house] = y_pred
-
-    house_predictions = np.argmax(predictions, axis=1)
+        predictions.append(y_pred)
+    predictions = np.array(predictions)
+    house_predictions = np.argmax(predictions, axis=0)
     HouseToInt = {'Ravenclaw': 0, 'Slytherin': 1, 'Gryffindor': 2, 'Hufflepuff': 3}
     IntToHouse = {v: k for k, v in HouseToInt.items()}
     return [IntToHouse[pred] for pred in house_predictions]
@@ -58,22 +58,3 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"Exception Error: {e}")
-
-if __name__ == "__main__":
-    import sys, os
-
-    try:
-        if len(sys.argv) != 2:
-            raise Exception("Enter just the filepath as an arguments!")
-        if not sys.argv[1].endswith(".csv"):
-            raise Exception(f"The file '{sys.argv[1]}' must be a csv file.")
-        if not os.path.exists(sys.argv[1]):
-            raise Exception(f"The file '{sys.argv[1]}' does not exist.")
-        if not os.path.exists("predictData.json"):
-            raise Exception(f"The file predictData.json does not exist.")
-        with open("predictData.json", 'r') as f:
-            predict_data = json.load(f)
-        df = pd.read_csv(sys.argv[1], sep=",")
-        get_predictions(df, predict_data)
-    except Exception as e:
-        print(f"Exeption Error: {e}")

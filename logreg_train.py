@@ -19,11 +19,11 @@ class SortingHat(describe):
                 self._NormalizedDF[col] = (self._DataFrame[col] - mean[col]) / std[col]
             elif col != "Hogwarts House":
                 self._NormalizedDF.drop(col, axis=1, inplace=True)
-        self.initialize_parameters(mean.index.shape[0], len(HouseToInt))
+        self.initialize_parameters(mean.index.shape[0])
         return self._NormalizedDF[self._NormalizedDF.columns.drop("Hogwarts House")].values, self._NormalizedDF["Hogwarts House"].values
 
-    def initialize_parameters(self, featuresNum, HousesNum):
-        self._Weight  = np.random.randn(featuresNum, HousesNum)
+    def initialize_parameters(self, featuresNum):
+        self._Weight  = np.random.randn(featuresNum)
 
     def SigmoidFunction(self, y):
         return 1 / (1 + np.exp(-y))
@@ -41,11 +41,11 @@ class SortingHat(describe):
         self._Weight -= learning_rate * gradient
 
     def predict(self, features_values):
-        y_pred = self.SigmoidFunction(np.dot(features_values, self._Weight))
-        return np.argmax(y_pred, axis=1)
+        return self.SigmoidFunction(np.dot(features_values, self._Weight))
 
     def evaluate_accuracy(self, y_true, y_pred):
-        return np.mean(y_true == y_pred)
+        predictions = np.where(y_pred >= 0.5, 1, 0)
+        return np.mean(y_true == predictions)
 
     def optimize(self, features_values : np.ndarray, TruetargetsValues : list, learning_rate : float, num_iterations : int, batch_size : float=0.3):
         featuresSize = features_values.shape[0]
@@ -62,21 +62,24 @@ class SortingHat(describe):
 
             if i % 100 == 0:
                 y_pred_remaining = self.predict(features_values[num_batches:])
-                accuracy = self.evaluate_accuracy(np.argmax(TruetargetsValues[num_batches:], axis=1), y_pred_remaining)
+                accuracy = self.evaluate_accuracy(TruetargetsValues[num_batches:], y_pred_remaining)
                 print(f"Iteration {i}, cost: {cost}, Accuracy on remaining data: {accuracy * 100:.2f}%")
+        print("-------------------------------------------")
 
     def trainModel(self):
-        learning_rate = 1
-        num_iterations = 1000
-        batch_size = 0.3  # 30% of data as batch
+        learning_rate = 0.01
+        num_iterations = 2000
+        batch_size = 0.3  # % of data as batch
         self._costs = []
         HouseToInt = {'Ravenclaw': 0, 'Slytherin': 1, 'Gryffindor': 2, 'Hufflepuff': 3}
+        IntToHouse = {0 : 'Ravenclaw', 1 : 'Slytherin', 2 : 'Gryffindor', 3 : 'Hufflepuff'}
         features_values, classes_values = self.normalizeData(HouseToInt)
         weights = {}
-        for house, cls in HouseToInt.items():
-            y_one_vs_all = np.zeros((classes_values.shape[0], len(HouseToInt)), dtype=int)
+        for key, house in IntToHouse.items():
+            y_one_vs_all = np.zeros((classes_values.shape[0]), dtype=int)
             for key, value in enumerate(classes_values):
-                y_one_vs_all[key][value] = 1
+                if IntToHouse[value] == house:
+                    y_one_vs_all[key] = 1
             self.optimize(features_values, y_one_vs_all, learning_rate, num_iterations, batch_size)
             weights[house] = self._Weight.tolist()
 
