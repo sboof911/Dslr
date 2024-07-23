@@ -1,13 +1,16 @@
-from describe import describe, np, pd
+from describe import describe, np
 import json
 
 class SortingHat(describe):
     def __init__(self, dataset_train_csvpath : str):
         super().__init__()
+        self._ColumnsToDrop = ["Care of Magical Creatures", "Defense Against the Dark Arts"]
         self.calculate_data(dataset_train_csvpath)
         self.trainModel()
 
     def normalizeData(self, HouseToInt):
+        self._SummaryDF.drop(self._ColumnsToDrop, axis=1, inplace=True)
+        self._DataFrame.drop(self._ColumnsToDrop, axis=1, inplace=True)
         mean = self._SummaryDF.loc["Mean"]
         std  = self._SummaryDF.loc["Std"]
         self._NormalizedDF = self._DataFrame.copy()
@@ -15,8 +18,8 @@ class SortingHat(describe):
         self._NormalizedDF["Hogwarts House"] = self._NormalizedDF["Hogwarts House"].map(HouseToInt)
         for col in self._DataFrame.columns:
             if col in mean.index:
-                self._DataFrame[col] = self._DataFrame[col].fillna(mean[col])
                 self._NormalizedDF[col] = (self._DataFrame[col] - mean[col]) / std[col]
+                self._NormalizedDF[col] = self._NormalizedDF[col].fillna(0.0)
             elif col != "Hogwarts House":
                 self._NormalizedDF.drop(col, axis=1, inplace=True)
         self.initialize_parameters(mean.index.shape[0])
@@ -50,6 +53,9 @@ class SortingHat(describe):
     def optimize(self, features_values : np.ndarray, TruetargetsValues : list, learning_rate : float, num_iterations : int, batch_size : float=0.3):
         featuresSize = features_values.shape[0]
         num_batches = int(featuresSize * batch_size)
+        best_accuracy = 0
+        best_Weight = self._Weight
+        best_cost = 100
         for i in range(num_iterations):
             idx = np.random.permutation(featuresSize)
             feature_shuffled = features_values[idx]
@@ -58,35 +64,41 @@ class SortingHat(describe):
             Truetarget_batch = Truetarget_shuffled[:num_batches]
             self.gradient_descent(feature_batch, Truetarget_batch, learning_rate)
             cost = self.compute_cost(feature_batch, Truetarget_batch)
-            self._costs.append(cost)
 
             if i % 100 == 0:
                 y_pred_remaining = self.predict(features_values[num_batches:])
                 accuracy = self.evaluate_accuracy(TruetargetsValues[num_batches:], y_pred_remaining)
+                if best_accuracy < accuracy:
+                    best_accuracy = accuracy
+                    best_Weight = self._Weight
+                    best_cost = cost
                 print(f"Iteration {i}, cost: {cost}, Accuracy on remaining data: {accuracy * 100:.2f}%")
+
+        print(f"Best cost: {best_cost}, and best Accuracy on all the data of the current House: {best_accuracy * 100:.2f}%")
+        self._Weight = best_Weight
         print("-------------------------------------------")
 
     def trainModel(self):
-        learning_rate = 0.01
-        num_iterations = 2000
+        learning_rate = 0.1
+        num_iterations = 500
         batch_size = 0.3  # % of data as batch
-        self._costs = []
         HouseToInt = {'Ravenclaw': 0, 'Slytherin': 1, 'Gryffindor': 2, 'Hufflepuff': 3}
-        IntToHouse = {0 : 'Ravenclaw', 1 : 'Slytherin', 2 : 'Gryffindor', 3 : 'Hufflepuff'}
         features_values, classes_values = self.normalizeData(HouseToInt)
+
         weights = {}
-        for key, house in IntToHouse.items():
-            y_one_vs_all = np.zeros((classes_values.shape[0]), dtype=int)
-            for key, value in enumerate(classes_values):
-                if IntToHouse[value] == house:
-                    y_one_vs_all[key] = 1
+        for house, _ in HouseToInt.items():
+            print("House: ", house)
+            y_one_vs_all = np.where(classes_values == HouseToInt[house], 1, 0)
             self.optimize(features_values, y_one_vs_all, learning_rate, num_iterations, batch_size)
             weights[house] = self._Weight.tolist()
+            self._Weight = np.random.randn(self._Weight.shape[0])
 
         data = {
             "weights":weights,
             "means":self._SummaryDF.loc["Mean"].to_dict(),
-            "stds":self._SummaryDF.loc["Std"].to_dict()
+            "stds":self._SummaryDF.loc["Std"].to_dict(),
+            "ColumnsToDrop":self._ColumnsToDrop,
+            "HouseToInt":HouseToInt
         }
         with open("predictData.json", 'w') as f:
             json.dump(data, f, indent=4)
