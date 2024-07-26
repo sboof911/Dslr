@@ -1,3 +1,5 @@
-Dslrenv
+*env*
 __pycache__
 *test*
+*.csv
+*.json
